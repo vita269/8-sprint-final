@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	_ "modernc.org/sqlite"
 )
 
@@ -33,10 +35,9 @@ func getTestParcel() Parcel {
 // TestAddGetDelete проверяет добавление, получение и удаление посылки
 func TestAddGetDelete(t *testing.T) {
 	// prepare
+	require := require.New(t)
 	db, err := sql.Open("sqlite", "tracker.db")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(err, "не удалось открыть БД")
 	defer db.Close()
 	store := NewParcelStore(db)
 	parcel := getTestParcel()
@@ -44,36 +45,29 @@ func TestAddGetDelete(t *testing.T) {
 	// add
 	// добавьте новую посылку в БД, убедитесь в отсутствии ошибки и наличии идентификатора
 	id, err := store.Add(parcel)
-	if err != nil {
-		t.Fatal("failed to add parcel", err)
-	}
-	if id == 0 {
-		t.Error("ID посылки не был присвоен")
-	}
+	require.NoError(err, "ошибка при добавлении посылки")
+	require.NotZero(id, "ID посылки не был присвоен")
 
-	// get
-	// получите только что добавленную посылку, убедитесь в отсутствии ошибки
-	// проверьте, что значения всех полей в полученном объекте совпадают со значениями полей в переменной parcel
+	// Получение посылки
 	gotParcel, err := store.Get(id)
-	if err != nil {
-		t.Fatal("failed to get parcel", err)
-	}
-	if gotParcel.Number != parcel.Number || gotParcel.Client != parcel.Client || gotParcel.Status != parcel.Status || gotParcel.Address != parcel.Address || gotParcel.CreatedAt != parcel.CreatedAt {
-		t.Errorf("parcel fields do not match: expected %v, got %v", parcel, gotParcel)
-	}
+	require.NoError(err, "ошибка при получении посылки")
+	// Проверка всех полей
+	require.Equal(parcel.Number, gotParcel.Number, "не совпадает номер посылки")
+	require.Equal(parcel.Client, gotParcel.Client, "не совпадает клиент")
+	require.Equal(parcel.Status, gotParcel.Status, "не совпадает статус")
+	require.Equal(parcel.Address, gotParcel.Address, "не совпадает адрес")
+	require.Equal(parcel.CreatedAt, gotParcel.CreatedAt, "не совпадает дата создания")
+
 	// delete
 	// удалите добавленную посылку, убедитесь в отсутствии ошибки
 	// проверьте, что посылку больше нельзя получить из БД
 	err = store.Delete(id)
-	if err != nil {
-		t.Fatal("failed to delete parcel", err)
-	}
+	require.NoError(err, "ошибка при удалении посылки")
+
+	// Проверка удаления
 	_, err = store.Get(id)
-	if err == nil {
-		t.Error("parcel was not deleted correctly")
-	} else if !errors.Is(err, sql.ErrNoRows) {
-		t.Error("unexpected error", err)
-	}
+	require.Error(err, "посылка должна быть удалена")
+	require.True(errors.Is(err, sql.ErrNoRows), "ожидается ошибка отсутствия строк")
 }
 
 // TestSetAddress проверяет обновление адреса
