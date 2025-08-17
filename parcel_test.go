@@ -22,6 +22,7 @@ var (
 // getTestParcel возвращает тестовую посылку
 func getTestParcel() Parcel {
 	return Parcel{
+		Number:    randRange.Intn(10000000),
 		Client:    1000,
 		Status:    ParcelStatusRegistered,
 		Address:   "test",
